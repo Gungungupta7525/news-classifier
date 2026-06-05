@@ -1,5 +1,4 @@
 scikit-learn
 pandas
 numpy
-streamlit   (if using streamlit)
-gradio      (if using gradio)
+gradio
