@@ -123,6 +123,16 @@ if st.button("Predict"):
 
         # Prediction
         #prediction = model.predict(clf_vectorizer.transform([user_input]))[0]
+        if len(user_input.split()) < 6:
+            st.warning("⚠️ Please enter proper news content")
+            st.stop()
+
+        # ✅ Step 2: Keyword check
+        news_keywords = ["government", "match", "market", "technology", "company", "election"]
+
+        if not any(word in user_input.lower() for word in news_keywords):
+            st.warning("⚠️ Input doesn't look like news")
+            st.stop()
         prediction = predict_text(user_input)
         category = labels[prediction]
 
