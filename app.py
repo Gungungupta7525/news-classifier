@@ -7,17 +7,39 @@ from sklearn.metrics.pairwise import cosine_similarity
 import warnings
 
 warnings.filterwarnings("ignore")
+st.set_page_config(page_title="News Classifier", layout="centered")
 
 # -----------------------------
 # Load model & vectorizer (for prediction)
 # -----------------------------
-model = pickle.load(open("model.pkl", "rb"))
-clf_vectorizer = pickle.load(open("vectorizer.pkl", "rb"))
+#model = pickle.load(open("model.pkl", "rb"))
+#clf_vectorizer = pickle.load(open("vectorizer.pkl", "rb"))
+@st.cache_resource
+def load_model():
+    model = pickle.load(open("model.pkl", "rb"))
+    vectorizer = pickle.load(open("vectorizer.pkl", "rb"))
+    return model, vectorizer
+
+model, clf_vectorizer = load_model()
 
 # -----------------------------
 # Load dataset
 # -----------------------------
-df = pd.read_csv("train.csv")
+#df = pd.read_csv("train.csv")
+@st.cache_data
+def load_data():
+    df = pd.read_csv("train.csv")
+    
+    # 🔥 reduce size 
+    df = df.sample(2000, random_state=42)
+    
+    df['text'] = df['Title'] + " " + df['Description']
+    df = df.dropna()
+    
+    return df
+
+df = load_data()
+documents = df['text'].tolist()
 
 # Combine text
 df['text'] = df['Title'] + " " + df['Description']
@@ -40,7 +62,8 @@ labels = {
 # -----------------------------
 @st.cache_resource
 def create_tfidf(docs):
-    tfidf_vectorizer = TfidfVectorizer(stop_words='english')
+    tfidf_vectorizer = TfidfVectorizer(stop_words='english', max_features=5000)
+    #tfidf_vectorizer = TfidfVectorizer(stop_words='english')
     vectors = tfidf_vectorizer.fit_transform(docs)
     return tfidf_vectorizer, vectors
 
@@ -54,7 +77,8 @@ def retrieve_similar_news(query, top_k=3):
     similarities = cosine_similarity(query_vec, doc_vectors)[0]
 
     # Get top results
-    top_indices = similarities.argsort()[-top_k*2:][::-1]
+    #top_indices = similarities.argsort()[-top_k*2:][::-1]
+    top_indices = similarities.argsort()[-top_k-5:][::-1]
 
     results = []
     seen = set()
@@ -83,11 +107,14 @@ This news belongs to **{category}** category.
 This news is related to {category.lower()} because it talks about recent developments, events, or trends in this domain.
 The system analyzed similar past news and found matching patterns, which helped in predicting the correct category.
 """
+@st.cache_data
+def predict_text(text):
+    return model.predict(clf_vectorizer.transform([text]))[0]
 
 # -----------------------------
 # UI
 # -----------------------------
-st.title("📰 News Classifier with Smart RAG 🤖")
+st.title("📰 News Classifier  🤖")
 
 user_input = st.text_area("Enter News Text")
 
@@ -95,7 +122,8 @@ if st.button("Predict"):
     if user_input.strip() != "":
 
         # Prediction
-        prediction = model.predict(clf_vectorizer.transform([user_input]))[0]
+        #prediction = model.predict(clf_vectorizer.transform([user_input]))[0]
+        prediction = predict_text(user_input)
         category = labels[prediction]
 
         st.success(f"Category: {category}")
